@@ -38,7 +38,7 @@ options:
   policy_document:
     description:
       - The path to the properly json formatted policy file
-      - A properly json formatted policy as string (mutually exclusive with C(policy_document), see https://github.com/ansible/ansible/issues/7005#issuecomment-42894813 on how to use it properly)
+      - A properly json formatted policy as string
     required: false
   state:
     description:
