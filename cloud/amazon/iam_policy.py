@@ -37,10 +37,7 @@ options:
     required: true
   policy_document:
     description:
-      - The path to the properly json formatted policy file (mutually exclusive with C(policy_json))
-    required: false
-  policy_json:
-    description:
+      - The path to the properly json formatted policy file
       - A properly json formatted policy as string (mutually exclusive with C(policy_document), see https://github.com/ansible/ansible/issues/7005#issuecomment-42894813 on how to use it properly)
     required: false
   state:
@@ -104,7 +101,7 @@ tasks:
     iam_name: "{{ item.user }}"
     policy_name: "s3_limited_access_{{ item.prefix }}"
     state: present
-    policy_json: " {{ lookup( 'template', 's3_policy.json.j2') }} "
+    policy_document: " {{ lookup( 'template', 's3_policy.json.j2') }} "
     with_items:
       - user: s3_user
         prefix: s3_user_prefix
@@ -277,7 +274,6 @@ def main():
       iam_name=dict(default=None, required=False),
       policy_name=dict(default=None, required=True),
       policy_document=dict(default=None, required=False),
-      policy_json=dict(default=None, required=False),
       skip_duplicates=dict(type='bool', default=True, required=False)
   ))
 
@@ -295,21 +291,21 @@ def main():
   policy_name = module.params.get('policy_name')
   skip = module.params.get('skip_duplicates')
 
-  if module.params.get('policy_document') != None and module.params.get('policy_json') != None:
-      module.fail_json(msg='Only one of "policy_document" or "policy_json" may be set')
-
-  if module.params.get('policy_document') != None:
-    with open(module.params.get('policy_document'), 'r') as json_data:
+  if module.params.get('policy_document'):
+    try:
+      with open(module.params.get('policy_document')) as json_data:
+        try:
           pdoc = json.dumps(json.load(json_data))
           json_data.close()
-  elif module.params.get('policy_json') != None:
-      pdoc = module.params.get('policy_json')
-      # if its a string, assume it is already JSON
-      if not isinstance(pdoc, basestring):
-        try:
-          pdoc = json.dumps(pdoc)
-        except Exception as e:
-          module.fail_json(msg='Failed to convert the policy into valid JSON: %s' % str(e))
+        except ValueError as e:
+          module.fail_json(msg=str(e))
+    except (OSError, IOError) as e:
+      try:
+        pdoc = json.dumps(json.loads(module.params.get('policy_document')))
+      except ValueError as e:
+        module.fail_json(msg=str(e))
+    except Exception as e:
+      module.fail_json(msg=str(e))
   else:
     pdoc=None
 
